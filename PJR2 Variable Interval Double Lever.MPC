@@ -1,0 +1,280 @@
+\-------------------------------------------------------------------------
+\PJR2 Variable Interval Single Lever
+\Version 1.0 (2016-02-23)
+\Shaun Khoo (ORCID: 0000-0002-0972-3788)
+\-------------------------------------------------------------------------
+
+\Control Constants
+^SessionLength = 30		\Session length in minutes
+^Timebins = 30			\Number of timebins
+^VIScheduleLeft = 15		\Variable Interval Schedule (s), left lever
+^VIScheduleRight = 15		\Variable Interval Schedule (s), right lever
+^Version = 100			\Program version
+
+\Inputs
+^LeftLever = 1
+^RightLever = 3
+^Magazine = 5
+
+\Outputs
+^LeftOut = 1
+^RightOut = 2
+^Pellet = 3
+^LeftLight = 4
+^RightLight = 5
+^Dipper = 6
+^HouseLight = 7
+^MagLight = 8
+^Infrared = 9
+^Fan = 16
+
+\Z-Pulses
+^Omnom = 1
+^NomRight = 2
+^Shutdown = 8
+
+\DATA - TOTALS
+DIM A = 7
+\A(0) = Left Lever Presses
+\A(1) = Right Lever Presses
+\A(2) = Pellets delivered
+\A(3) = Magazine Entries
+\A(4) = Latency to first left lever press
+\A(5) = Latency to first right lever press
+\A(6) = Latency to first pellet
+\A(7) = Latency to first magazine entry
+
+\DATA - EVENT LOG
+DIM B = 50000		\All event times, 		subscript L
+DIM C = 50000		\All event identities, 		subscript L
+
+\DATA - TIMEBINS
+DIM D = 1000		\Left lever presses,		subscript T
+DIM E = 1000		\Right lever presses,		subscript T
+DIM F = 1000		\Rewards, 			subscript T
+DIM G = 1000		\Magazine entries, 		subscript T
+
+\DATA - TIMECOURSE
+DIM H = 50000		\All left lever presses,	subscript M
+DIM I = 50000		\All right lever presses,	subscript N
+DIM J = 50000		\All rewards, 			subscript O
+DIM K = 50000		\All magazine entries, 		subscript P
+
+\CONTROL VARIABLES - SESSION OPERATION
+DIM X = 4
+\X(0) = Session Clock
+\X(1) = Centisecond Clock
+\X(2) = Timebin shifter
+\X(3) = VI Schedule Left
+\X(4) = VI Schedule Right
+
+\VT LIST - This list will be initialised into a VI schedule
+LIST W = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
+
+LIST Y = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
+
+\CONTROL VARIABLES - SESSION PARAMETERS
+DIM Z = 4
+var_alias Session Length (min) = Z(0)
+var_alias No. of Timebins = Z(1)
+var_alias Variable Interval Schedule (Left) = Z(2)
+var_alias Variable Interval Schedule (Right) = Z(3)
+var_alias Program Version = Z(4)
+
+\DATA MANAGEMENT
+DISKVARS = A, B, C, D, E, F, G, H, I, Y, Z
+DISKOPTIONS = FULLHEADERS
+DISKCOLUMNS = 1
+Y2KCOMPLIANT
+
+\-------------------------------------------------------------------------
+\State Set 1 - Session Control Program
+
+S.S.1,
+S1,	\State 1 sets default variable values
+	0.01": SET Z(0) = ^SessionLength, Z(1) = ^Timebins, Z(2) = ^VIScheduleLeft;
+	SET Z(3) = ^VIScheduleRight, Z(4) = ^Version / 100;
+
+	\Seal all the arrays
+	SET B(L+1) = -987.987, C(L+1) = -987.987;
+	SET D(T+1) = -987.987, E(T+1) = -987.987, F(T+1) = -987.987, G(T+1) = -987.987;
+	SET H(M+1) = -987.987, I(N+1) = -987.987, J(O+1) = -987.987, K(P+1) = -987.987;
+
+	\Show key variables
+	SHOW 1, Session Length (min), Z(0);
+	SHOW 2, No. of Timebins, Z(1);
+	SHOW 3, Variable Interval Schedule (Left), Z(2);
+	Show 4, Variable Interval Schedule (Right), Z(3);
+	SHOW 5, Program Version, Z(4) ---> S2
+
+S2,	\State 2 responds to the start command
+	#START: CLEAR 1, 5; SHOW 1, Session Time, X(0);
+	ON ^Houselight; SET H(0) = Z(0) * 60, I(0) = Z(0) * 60;
+	SET J(0) = Z(0) * 60, K(0) = Z(0) * 60 ---> S3
+
+S3,	\State 3 is the session clock
+	1": ADD X(0); SHOW 1, Session Time, X(0);
+	IF X(0) / 60 >= Z(0) [@TRUE, @FALSE]
+		@TRUE: Z^Shutdown; SET A(4) = H(0), A(5) = I(0);
+		SET A(6) = J(0), A(7) = K(0) ---> S4
+		@FALSE: ---> SX
+
+S4,	\State 4 ends the program
+	1": ---> STOPABORTFLUSH
+
+\-------------------------------------------------------------------------
+\State Set 2 - Centisecond clocks
+
+S.S.2,
+S1,	\State 1 responds to the start command
+	#START: ---> S2
+
+S2,	\State 2 times 1 centisecond increments, timebin shifting
+	0.01": SET X(1) = X(1) + 0.01, X(2) = X(2) + 0.01;
+	IF (X(2) / 60 >= Z(0) / Z(1)) AND (T + 1 < Z(1)) [@SHIFT, @STAY]
+		@SHIFT: SET X(2) = 0; ADD T;
+			SET D(T) = 0, E(T) = 0, F(T) = 0, G(T) = 0;
+			SET D(T+1) = -987.987, E(T+1) = -987.987;
+			SET F(T+1) = -987.987, G(T+1) = -987.987 ---> SX
+		@STAY: ---> SX
+
+	#Z^Shutdown: ---> S1
+
+\-------------------------------------------------------------------------
+\State Set 3 - Left Lever
+
+S.S.3,
+S1,	\State 1 responds to the start command
+	#START: SHOW 2, Left Lever, A(0); ON ^LeftOut ---> S2
+
+S2,	\State 2 responds to active left lever presses
+	#R^LeftLever: ADD A(0), D(T); SET B(L) = X(1), C(L) = 1;
+	SET H(M) = X(1); ADD L, M; SET B(L) = -987.987, C(L) = -987.987;
+	SET H(M) = -987.987; SHOW 2, Left Lever, A(0);
+	IF (S.S.4 = 3) AND (S.S.6 < 4) [@REWARD, @NONE]
+		@REWARD: Z^Omnom ---> SX
+		@NONE: ---> SX
+
+	#Z^Shutdown: ---> S3
+
+S3,	\State 3 is a holding state
+	#START: ---> SX
+
+\-------------------------------------------------------------------------
+\State Set 4 - Pellet Dispenser (Left)
+
+S.S.4,
+S1,	\State 1 responds to the start command, establishing schedule
+	#START: INITCONSTPROBARR W, Z(2);
+	RANDD X(3) = W; SET X(3) = (X(3) - 0.5) * 1";
+	SHOW 4, Pellets Delivered, A(2) ---> S2
+
+S2,	\State 2 waits to make a pellet available
+	X(3)#T: ---> S3
+
+	#Z^Shutdown: ---> S5
+
+S3,	\State 3 waits for a lever press to deliver the pellet
+	#Z^Omnom: ON ^Pellet; ADD A(2), F(T); SET B(L) = X(1), C(L) = 3.1;
+	SET J(O) = X(1); ADD L, O; SET B(L) = -987.987, C(L) = -987.987;
+	SET J(O) = -987.987; SHOW 4, Pellets Delivered, A(2) ---> S4
+
+	#Z^Shutdown: ---> S5
+
+S4,	\State 4 turns off the pellet dispenser
+	0.5": OFF ^Pellet; RANDD X(3) = W; SET X(3) = (X(3) - 0.5) * 1" ---> S2
+
+	#Z^Shutdown: OFF ^Pellet ---> S5
+
+S5,	\State 5 is a holding state
+	#START: ---> SX
+
+\-------------------------------------------------------------------------
+\State Set 5 - Right Lever
+
+S.S.5,
+S1,	\State 1 responds to the start command
+	#START: SHOW 3, Right Lever, A(1); ON ^RightOut ---> S2
+
+S2,	\State 2 responds to active left lever presses
+	#R^RightLever: ADD A(1), E(T); SET B(L) = X(1), C(L) = 2;
+	SET I(N) = X(1); ADD L, N; SET B(L) = -987.987, C(L) = -987.987;
+	SET I(N) = -987.987; SHOW 3, Right Lever, A(1);
+	IF (S.S.6 = 3) AND (S.S.4 < 4) [@REWARD, @NONE]
+		@REWARD: Z^NomRight ---> SX
+		@NONE: ---> SX
+
+	#Z^Shutdown: ---> S3
+
+S3,	\State 3 is a holding state
+	#START: ---> SX
+
+\-------------------------------------------------------------------------
+\State Set 6 - Pellet Dispenser (Right)
+
+S.S.6,
+S1,	\State 1 responds to the start command, establishing schedule
+	#START: INITCONSTPROBARR Y, Z(2);
+	RANDD X(4) = Y; SET X(4) = (X(4) - 0.5) * 1" ---> S2
+
+S2,	\State 2 waits to make a pellet available
+	X(4)#T: ---> S3
+
+	#Z^Shutdown: ---> S5
+
+S3,	\State 3 waits for a lever press to deliver the pellet
+	#Z^NomRight: ON ^Pellet; ADD A(2), F(T); SET B(L) = X(1), C(L) = 3.2;
+	SET J(O) = X(1); ADD L, O; SET B(L) = -987.987, C(L) = -987.987;
+	SET J(O) = -987.987; SHOW 4, Pellets Delivered, A(2) ---> S4
+
+	#Z^Shutdown: ---> S5
+
+S4,	\State 4 turns off the pellet dispenser
+	0.5": OFF ^Pellet; RANDD X(4) = Y; SET X(4) = (X(4) - 0.5) * 1" ---> S2
+
+	#Z^Shutdown: OFF ^Pellet ---> S5
+
+S5,	\State 5 is a holding state
+	#START: ---> SX
+
+\-------------------------------------------------------------------------
+\State Set 7 - Magazine Entries
+
+S.S.7,
+S1,	\State 1 responds to the start command
+	#START: SHOW 5, Magazine Entries, A(3) ---> S2
+
+S2,	\State 2 records magazine entries
+	#R^Magazine: ADD A(3), G(T); SET B(L) = X(1), C(L) = 5;
+	SET K(P) = X(1); ADD L, P; SET B(L) = -987.987, C(L) = -987.987;
+	SET K(P) = -987.987; SHOW 5, Magazine Entries, A(3) ---> SX
+
+	#Z^Shutdown: ---> S3
+
+S3,	\State 3 is a holding state
+	#START: ---> SX
+
+\-------------------------------------------------------------------------
+\State Set 8 - Screen refresher
+
+S.S.8,
+S1,	\State 1 refreshes the screen
+	1.5": SHOW 1, Session Length (min), Z(0);
+	SHOW 2, No. of Timebins, Z(1);
+	SHOW 3, Variable Interval Schedule (Left), Z(2);
+	Show 4, Variable Interval Schedule (Right), Z(3);
+	SHOW 5, Program Version, Z(4);
+	IF S.S.1 > 2 [@MISS, @STAY]
+		@MISS: ---> S2
+		@STAY: ---> SX
+
+	#START: ---> S2
+
+S2,	\State 2 is a holding state
+	#START: ---> SX
