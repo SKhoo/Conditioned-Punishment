@@ -16,3 +16,5 @@ In later sessions a second lever is introduced (PJR2) and each lever is rewarded
 To equalise responding on both levers, the two levers are trained on a random interval that is recalculated after each response (PJR3). The lever with more responses will be rewarded less frequently and the lever with fewer responses will be rewarded more frequently.
 
 Finally, conditioned punishment sessions are run (PJR4), which involve the pairing of cues with each lever on independent variable interval schedules. The randomly delivered cue may result in delivery of a footshock which coterminates with the cue.
+
+These programs are also available on Figshare (doi:10.6084/m9.figshare.3145294)
